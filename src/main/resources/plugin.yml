@@ -1,0 +1,13 @@
+name: PartyGames
+version: ${project.version}
+main: me.whitetiger.partygames.PartyGames
+api-version: 1.16
+authors: [ 007_whitetiger ]
+description: Party Games Rip off
+softdepend: [ PlugMan ]
+
+commands:
+  party:
+    aliases:
+      - partygames
+    description: PartyGames commands
