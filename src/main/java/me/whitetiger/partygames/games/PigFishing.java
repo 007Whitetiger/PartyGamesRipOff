@@ -29,14 +29,6 @@ public class PigFishing extends AGames {
 
     private BukkitRunnable endTask;
     private BukkitRunnable tickTask;
-    private final BukkitRunnable scoreBoardTask = new BukkitRunnable() {
-        @Override
-        public void run() {
-            List<Player> scores = calculateStanding(pointsMap);
-
-            updateLeaderBoardScoreBoard(scoreBoard, pointsMap, scores);
-        }
-    };
     private BukkitRunnable pistonRunnable = null;
 
     private World world = Bukkit.getWorld("fishSlap");
@@ -47,7 +39,6 @@ public class PigFishing extends AGames {
     private final HashMap<Character, Player> characterPlayerHashMap = new HashMap<>();
 
     private final List<ArmorStand> spawnsUsed = new ArrayList<>();
-    private ScoreHelper scoreBoard;
 
     @Override
     public void start() {
@@ -71,18 +62,12 @@ public class PigFishing extends AGames {
         if (endTask != null) {
             endTask.cancel();
         }
-        if (scoreBoardTask != null) {
-            scoreBoardTask.cancel();
-        }
     }
 
     private void register() {
 
-        ScoreHelper timeWaitingScoreBoard = createWaitingLeaderBoard(10);
-
         players.forEach(player -> {
             pointsMap.put(player, 0);
-            timeWaitingScoreBoard.addToPlayer(player);
 
             List<ArmorStand> entities = new ArrayList<>(world.getEntitiesByClass(ArmorStand.class));
             for (ArmorStand armorStand : entities) {
@@ -101,8 +86,6 @@ public class PigFishing extends AGames {
             players.forEach((player) -> {
                 player.sendMessage("Starting in " + currentTime);
             });
-            
-            updateWaitingLeaderBoard(timeWaitingScoreBoard, currentTime);
         };
 
         Runnable endCountDownRunnable = () -> {
@@ -140,7 +123,7 @@ public class PigFishing extends AGames {
 
     private void startGame() {
         ScoreHelper playerBoard = createDefaultLeaderBoardScoreboard();
-        scoreBoard = playerBoard;
+        this.startUpdateLeaderBoardTask(playerBoard, pointsMap);
 
         players.forEach(player -> {
             playerBoard.addToPlayer(player);
@@ -148,7 +131,6 @@ public class PigFishing extends AGames {
             player.getInventory().addItem(new ItemStack(Material.FISHING_ROD));
         });
 
-        scoreBoardTask.runTaskTimerAsynchronously(plugin, 5, 5);
     }
 
     private void activateSuperPig(Player player) {

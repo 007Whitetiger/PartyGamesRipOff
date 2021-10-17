@@ -31,5 +31,8 @@ public class ServerEvents implements Listener {
         Player player = event.getPlayer();
         Session session = Session.getSession(player);
         player.sendMessage("Welcome " + player.getName() + ", you have " + session.points + " points!");
+        if (plugin.debugEnabled) {
+            plugin.addPlayer(player);
+        }
     }
 }

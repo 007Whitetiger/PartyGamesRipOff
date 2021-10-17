@@ -22,7 +22,6 @@ public class StartGameCommand extends PartyCommand{
 
     @Override
     void onCommand(Player player, String[] args) {
-        plugin.addCurrentOnlinePlayers();
 
         AGames game;
         player.sendMessage(ChatColor.GOLD + "Starting game of Type: " + args[1]);

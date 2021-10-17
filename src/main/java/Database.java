@@ -1,12 +1,13 @@
-import com.mongodb.*;
-import com.mongodb.client.FindIterable;
+import java.util.ArrayList;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.Cursor;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
 
-import java.net.UnknownHostException;
-import java.util.ArrayList;
+import org.bukkit.entity.Player;
 
 public class Database {
 

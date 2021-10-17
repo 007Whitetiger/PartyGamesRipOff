@@ -8,9 +8,14 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scoreboard.Scoreboard;
+
+import me.whitetiger.partygames.ScoreHelper;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public abstract class Parkour extends AGames {
 
@@ -19,6 +24,7 @@ public abstract class Parkour extends AGames {
         this.spawnLocation = spawnLocation;
         this.checkpointLocation = checkpointLocation;
         this.fenceLocations = fenceLocations;
+        this.startX = this.spawnLocation.getBlockX();
     }
 
     public enum Checkpoint {
@@ -48,9 +54,12 @@ public abstract class Parkour extends AGames {
 
     private final Location spawnLocation;
     private final Location checkpointLocation;
+
+    private BukkitRunnable updateScoreBoardRunnable;
     private BukkitRunnable endTask;
 
     private long startTimeMs;
+    private int startX;
 
     private final List<Location> fenceLocations;
 
@@ -74,9 +83,7 @@ public abstract class Parkour extends AGames {
         super.stop();
         reset();
 
-        if (endTask != null && !endTask.isCancelled()) {
-            endTask.cancel();
-        }
+        stopTasks(Arrays.asList(updateScoreBoardRunnable, endTask));
     }
 
     public void registerPlayers() {
@@ -103,6 +110,7 @@ public abstract class Parkour extends AGames {
             for (Location location : fenceLocations) {
                 location.getBlock().setType(Material.AIR);
             }
+            
             startTimeMs = System.currentTimeMillis();
             endTask = new BukkitRunnable() {
                 @Override
@@ -111,6 +119,25 @@ public abstract class Parkour extends AGames {
                 }
             };
             endTask.runTaskLater(plugin, 50 * 20);
+            ScoreHelper scoreHelper = createDefaultLeaderBoardScoreboard();
+            players.forEach((player) -> {
+                scoreHelper.addToPlayer(player);
+            });
+            this.updateScoreBoardRunnable = new BukkitRunnable(){
+                
+
+                @Override
+                public void run() {
+                    HashMap<Player, Integer> playerProgressMap = new HashMap<>();
+                    players.forEach((player -> {
+                        playerProgressMap.put(player, Math.abs(player.getLocation().getBlockX()) - Math.abs(startX));
+                    }));
+                    updateLeaderBoardScoreBoard(scoreHelper, playerProgressMap);
+                    
+                }
+                
+            };
+            this.updateScoreBoardRunnable.runTaskTimer(plugin, 0, 2);
         };
 
         this.startTimer(10, countDownTask, endCountDownTask);

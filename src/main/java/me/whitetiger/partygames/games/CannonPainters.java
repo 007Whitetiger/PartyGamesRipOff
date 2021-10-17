@@ -93,18 +93,14 @@ public class CannonPainters extends AGames {
         
         plugin.getPlayerStunner().addPlayers(players);
 
-        ScoreHelper timeWaitingScoreboard = createWaitingLeaderBoard(10);
-
 
         for (int i = 0; i < players.size(); i++) {
             Player tempPlayer = players.get(i);
             playerColors.put(tempPlayer, _possibleColors.get(i));
             playerPoints.put(tempPlayer, 0);
-            timeWaitingScoreboard.addToPlayer(tempPlayer);
         }
 
         Consumer<Integer> timeConsumer = (currentTime) -> {
-            updateWaitingLeaderBoard(timeWaitingScoreboard, currentTime);
             players.forEach((player) -> {
                 player.sendMessage("Starting in " + currentTime);
             });

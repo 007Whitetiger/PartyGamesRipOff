@@ -60,7 +60,7 @@ public class ScoreHelper {
         sidebar = scoreboard.registerNewObjective("sidebar", "dummy", "dummy");
         sidebar.setDisplaySlot(DisplaySlot.SIDEBAR);
         // Create Teams
-        for(int i=1; i<=15; i++) {
+        for(int i=0; i<=15; i++) {
             Team team = scoreboard.registerNewTeam("SLOT_" + i);
             team.addEntry(genEntry(i));
         }

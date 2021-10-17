@@ -3,7 +3,7 @@ package me.whitetiger.partygames.games.helper;
 import me.whitetiger.partygames.PartyGames;
 import me.whitetiger.partygames.ScoreHelper;
 import me.whitetiger.partygames.Session;
-
+import me.whitetiger.partygames.utils.ListUtils;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -17,8 +17,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 // import org.bukkit.scoreboard.Team;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public abstract class AGames implements Listener {
 
@@ -27,8 +29,11 @@ public abstract class AGames implements Listener {
     public PartyGames plugin;
     public List<Player> players;
     public UUID gameID = UUID.randomUUID();
-    private BukkitRunnable startTask;
     private GameType gameType;
+
+
+    private BukkitRunnable startTask = null;
+    private BukkitRunnable scoreLeaderBoardTask = null;
 
     public AGames(GameType gameType) {
         plugin = PartyGames.getInstance();
@@ -41,6 +46,9 @@ public abstract class AGames implements Listener {
         });
         if (startTask != null && !startTask.isCancelled()) {
             startTask.cancel();
+        }
+        if (scoreLeaderBoardTask != null && !scoreLeaderBoardTask.isCancelled()) {
+            scoreLeaderBoardTask.cancel();
         }
     }
 
@@ -65,6 +73,22 @@ public abstract class AGames implements Listener {
 
     public void stopListening() {
         HandlerList.unregisterAll(this);
+    }
+
+    public void startUpdateLeaderBoardTask(ScoreHelper scoreHelper, HashMap<Player, Integer> playerPointsMap) {
+        this.startUpdateLeaderBoardTask(scoreHelper, playerPointsMap, 10);
+    }
+
+    public void startUpdateLeaderBoardTask(ScoreHelper scoreHelper, HashMap<Player, Integer> playerPointsMap, Integer tickUpdateCount) {
+        this.scoreLeaderBoardTask = new BukkitRunnable() {
+
+            @Override
+            public void run() {
+                updateLeaderBoardScoreBoard(scoreHelper, playerPointsMap);
+            }
+            
+        };
+        this.scoreLeaderBoardTask.runTaskTimer(plugin, 0, 5);
     }
 
     @Override
@@ -93,11 +117,16 @@ public abstract class AGames implements Listener {
     }
 
     public void startTimer(int time, final Consumer<Integer> timingConsumer,  final Runnable endTask) {
+        ScoreHelper waitingScoreHelper = createWaitingLeaderBoard(time);
+        players.forEach((player) -> {
+            waitingScoreHelper.addToPlayer(player);
+        });
         startTask = new BukkitRunnable() {
             int loops = time;
 
             @Override
             public void run() {
+                updateWaitingLeaderBoard(waitingScoreHelper, loops);
                 switch (loops) {
                     case 1:
                     case 2:
@@ -195,22 +224,26 @@ public abstract class AGames implements Listener {
 
     public void updateLeaderBoardScoreBoard(ScoreHelper scoreBoard, HashMap<Player, Integer> playerPoints, Player winner, Player second, Player third) {
         try {
-            scoreBoard.setSlot(3, ChatColor.GOLD + "1: " + ChatColor.GRAY + Objects.requireNonNull(winner).getName() + "    " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(winner)));
+            scoreBoard.setSlot(3, ChatColor.GOLD + "1: " + ChatColor.GRAY + Objects.requireNonNull(winner).getName() + "  " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(winner)));
         } catch (NullPointerException e) {
-            scoreBoard.setSlot(3, ChatColor.GOLD + "1: " + ChatColor.GRAY + "N/A" + "    " + ChatColor.GOLD + "0");
+            scoreBoard.setSlot(3, ChatColor.GOLD + "1: " + ChatColor.GRAY + "N/A" + "  " + ChatColor.GOLD + "0");
         }
 
         try {
-            scoreBoard.setSlot(2, ChatColor.GOLD + "2: " + ChatColor.GRAY + Objects.requireNonNull(second).getName() + "    " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(second)));
+            scoreBoard.setSlot(2, ChatColor.GOLD + "2: " + ChatColor.GRAY + Objects.requireNonNull(second).getName() + "  " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(second)));
         }catch (NullPointerException e) {
-            scoreBoard.setSlot(2, ChatColor.GOLD + "2: " + ChatColor.GRAY + "N/A" +  "    " +  ChatColor.GOLD + "0");
+            scoreBoard.setSlot(2, ChatColor.GOLD + "2: " + ChatColor.GRAY + "N/A" +  "  " +  ChatColor.GOLD + "0");
         }
 
         try {
-            scoreBoard.setSlot(1, ChatColor.GOLD + "3: " + ChatColor.GRAY + Objects.requireNonNull(third).getName()  + "    " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(third)));
+            scoreBoard.setSlot(1, ChatColor.GOLD + "3: " + ChatColor.GRAY + Objects.requireNonNull(third).getName()  + "  " + ChatColor.GOLD + Objects.requireNonNull(playerPoints.get(third)));
         }catch (NullPointerException e) {
-            scoreBoard.setSlot(1, ChatColor.GOLD + "3: " + ChatColor.GRAY + "N/A"  + "    " +  ChatColor.GOLD + "0");
+            scoreBoard.setSlot(1, ChatColor.GOLD + "3: " + ChatColor.GRAY + "N/A"  + "  " +  ChatColor.GOLD + "0");
         }
+    }
+
+    public void updateLeaderBoardScoreBoard(ScoreHelper scoreBoard, HashMap<Player, Integer> pointsMap) {
+        updateLeaderBoardScoreBoard(scoreBoard, pointsMap, calculateStanding(pointsMap));
     }
 
     public void updateLeaderBoardScoreBoard(ScoreHelper scoreBoard, HashMap<Player, Integer> playerPoints, List<Player> topPlayerList) {
@@ -245,23 +278,28 @@ public abstract class AGames implements Listener {
 
     }
 
-    public List<Player> calculateStanding(HashMap<Player, Integer> playerPoints) {
-        Player winner = null;
-        Player second = null;
-        Player third = null;
-        for (Player player : playerPoints.keySet()) {
-            int points = playerPoints.get(player);
-            if (winner == null || points > playerPoints.get(winner)) {
-                third = second;
-                second = winner;
-                winner = player;
-            }else if (second == null || points > playerPoints.get(second)) {
-                third = second;
-                second = player;
-            } else if (third == null || points > playerPoints.get(third)) {
-                third = player;
-            }
+    public class StandingsComparator implements Comparator<Entry<Player, Integer>> {
+
+        @Override
+        public int compare(Entry<Player, Integer> firstEntry, Entry<Player, Integer> secondEntry) {
+            return firstEntry.getValue().compareTo(secondEntry.getValue());
         }
+        
+    }
+
+    public List<Player> calculateStanding(HashMap<Player, Integer> playerPoints) {
+
+        StandingsComparator standingsComparator = new StandingsComparator();
+
+        Set<Entry<Player, Integer>> playerPointsSet = playerPoints.entrySet();
+        List<Entry<Player, Integer>> playerPointsList = new ArrayList<>(playerPointsSet);
+        Collections.sort(playerPointsList, standingsComparator);
+        List<Player> playerList = playerPointsList.stream().map((playerEntry) -> playerEntry.getKey()).collect(Collectors.toList());
+
+        Player winner = ListUtils.getFromListOrNull(playerList, 0);
+        Player second = ListUtils.getFromListOrNull(playerList, 1);
+        Player third = ListUtils.getFromListOrNull(playerList, 2);
+        
         return new ArrayList<>(Arrays.asList(winner, second, third));
     }
 
@@ -283,9 +321,13 @@ public abstract class AGames implements Listener {
     public void stopTasks(List<BukkitRunnable> bukkitRunnables) {
         bukkitRunnables.forEach(bukkitRunnable -> {
             System.out.println(bukkitRunnable);
-            if (bukkitRunnable != null && !bukkitRunnable.isCancelled()) {
-                bukkitRunnable.cancel();
-            }
+            stopTask(bukkitRunnable);
         });
+    }
+
+    public void stopTask(BukkitRunnable bukkitRunnable) {
+        if (bukkitRunnable != null && !bukkitRunnable.isCancelled()) {
+            bukkitRunnable.cancel();
+        }
     }
 }
